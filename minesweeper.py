@@ -1,4 +1,5 @@
 import random
+import re
 
 
 # let's create a board object to represent the minesweeper game
@@ -6,7 +7,7 @@ import random
 # "dig here", or "render this game for this object"
 class Board:
     def __init__(self, dim_size, num_bombs):
-        # keeping track of these parameters. They'll be helpful later on
+        # keeping track of these parameters.They'll be helpful later on
         self.dim_size = dim_size
         self.num_bombs = num_bombs
 
@@ -26,17 +27,20 @@ class Board:
         # generate a new board
         board = [[None for i in range(self.dim_size)] for j in range(self.dim_size)]
         # this creates an array like this:
-        # [[None, None, ....., None]，
-        # [None, None, ....., None]
-        # [....                   ]
-        # [None, None, ....., None]]，
+        # [[None, None, …, None]，
+        # [None, None, …, None]
+        # […,                 ]
+        # [None, None, …, None]]，
         # hence this represents a board!
 
         # plant the bombs
         bombs_planted = 0
         while bombs_planted < self.num_bombs:
+            # the loc formula selects a random integer between 0 and the total number of spaces in the board minus 1
+            # this is because in indexing, 0 is always the first value and the max value would be -1 of whatever the max is
+            # this is unlike length which just shoes the exact number of items in the array etc
             loc = random.randint(0, self.dim_size ** 2 - 1)  # return a random integer N such that a <= N <= b
-            row = loc // self.dim_size  # tells us the number of times dim_size goes into loc us what row to look at
+            row = loc // self.dim_size  # tells us the number of times dim_size goes into loc to tell us what row to look at
             col = loc % self.dim_size  # we want the remainder to tell us what index in that row to look at
 
             if board[row][col] == "*":
@@ -70,6 +74,11 @@ class Board:
 
         # make sure to not go out of bounds!
         num_neighbouring_bombs = 0
+        # starting bound: max (0, row-1) ensures the starting index in always 0 incase the value of row is 0 i.e (0-1=-1)
+        # this ensures we don't go out of bound
+        # closing bound: min(self.dim_size - 1, (row + 1) + 1) This ensures the ending row index is at most self.dim_size - 1
+        # incase (row + 1)+1 is greater that the max index value of the board.
+        # Ensuring wwe don't go out of bound.
         for r in range(max(0, row - 1), min(self.dim_size - 1, (row + 1) + 1)):
             for c in range(max(0, col - 1), min(self.dim_size - 1, col + 1) + 1):
                 if r == row and c == col:
@@ -85,8 +94,8 @@ class Board:
 
         # a few scenarios:
         # hit a bomb -> game over
-        # dig at location with neighboring bombs -> finish dig
-        # dig at location with no neighboring bombs -> recursively dig neighbors!
+        # dig at location with neighbouring bombs -> finish dig
+        # dig at location with no neighbouring bombs -> recursively dig neighbours!
 
         self.dug.add((row, col))  # keep track that we dug here
 
@@ -110,6 +119,53 @@ class Board:
         # it'll print out what this function returns!
         # return a string that shows the board to the player
 
+        # first create a new array that represent what the user would see
+        visible_board = [[None for i in range(self.dim_size)] for j in range(self.dim_size)]
+        for row in range(self.dim_size):
+            for col in range(self.dim_size):
+                if (row, col) in self.dug:
+                    # if its been dug, the visible board value will be whatever the actual board value is
+                    visible_board[row][col] == str(self.board[row][col])
+                else:
+                    visible_board[row][col] = " "
+
+            # put this together in a string
+            string_rep = ""
+            # get max column widths for printing
+            widths = []
+            for idx in range(self.dim_size):
+                columns = map(lambda x: x[idx], visible_board)
+                widths.append(
+                    len(
+                        max(columns, key=len)
+                    )
+                )
+
+            # print the csv strings
+            indices = [i for i in range(self.dim_size)]
+            indices_row = '   '
+            cells = []
+            for idx, col in enumerate(indices):
+                format = '%-' + str(widths[idx]) + "s"
+                cells.append(format % (col))
+            indices_row += '  '.join(cells)
+            indices_row += '  \n'
+
+            for i in range(len(visible_board)):
+                row = visible_board[i]
+                string_rep += f'{i} |'
+                cells = []
+                for idx, col in enumerate(row):
+                    format = '%-' + str(widths[idx]) + "s"
+                    cells.append(format % (col))
+                string_rep += ' |'.join(cells)
+                string_rep += ' |\n'
+
+            str_len = int(len(string_rep) / self.dim_size)
+            string_rep = indices_row + '-' * str_len + '\n' + string_rep + '-' * str_len
+
+            return string_rep
+
 
 # play the game
 def play(dim_size=10, num_bombs=10):
@@ -121,4 +177,3 @@ def play(dim_size=10, num_bombs=10):
     # Step 3a: if location is a bomb, show game over message
     # Step 3b: if location is not a bomb, dig recursively until each square is at least next to a bomb
     # Step 4: repeat steps 2 and 3a/b until there are no places to dig -> VICTORY!
-    pass
